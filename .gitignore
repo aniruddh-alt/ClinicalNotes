@@ -1,4 +1,8 @@
 /physionet.org
+MIMIC-IV-BHC/
 *.csv
 *.db
 discharge_notes.db
+.venv/
+.ruff_cache/
+__pycache__/
