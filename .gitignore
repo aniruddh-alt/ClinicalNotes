@@ -1,8 +1,35 @@
-/physionet.org
-MIMIC-IV-BHC/
-*.csv
-*.db
-discharge_notes.db
-.venv/
-.ruff_cache/
+.DS_Store
+
+# Python
 __pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ty_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Environments
+.venv/
+venv/
+
+# Data / artifacts
+/data/
+/outputs/
+/runs/
+*.db
+*.sqlite
+
+# Keep PhysioNet mirror in-repo if desired, but ignore derived artifacts
+/physionet.org/**/*.jsonl
+/physionet.org/**/*.parquet
+MIMIC-IV-BHC/mimic-iv-bhc.csv
+MIMIC-IV-BHC/SHA256SUMS.txt
+MIMIC-IV-BHC/index.html

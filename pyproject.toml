@@ -1,11 +1,57 @@
 [project]
 name = "clinicalnotes-1"
 version = "0.1.0"
-description = "Add your description here"
+description = "Patient-centric clinical notes summarization"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "oumi>=0.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.14.1",
+    "pre-commit>=4.0.1",
+    "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
     "ruff>=0.14.10",
     "ty>=0.0.7",
 ]
+
+[project.scripts]
+clinicalnotes = "clinicalnotes_1.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/clinicalnotes_1"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF"]
+ignore = ["E501"]  # keep line-length flexible for clinical text and prompts
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+disallow_any_unimported = true
+
+[tool.pyright]
+include = ["src", "tests", "scripts", "main.py"]
+extraPaths = ["src"]
+
+[tool.ty]
+pythonVersion = "3.12"

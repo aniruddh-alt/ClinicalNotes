@@ -1,0 +1,15 @@
+evaluation:
+  # Minimal evaluation example (lm_harness).
+  tasks:
+    - evaluation_backend: lm_harness
+      task_name: mmlu_college_computer_science
+  generation:
+    batch_size: null
+  output_dir: outputs/eval
+
+model:
+  # Point this at your output dir after training, or a HF model id.
+  model_name: outputs/train/sft
+  torch_dtype_str: bfloat16
+
+

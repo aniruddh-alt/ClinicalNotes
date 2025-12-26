@@ -1,0 +1,19 @@
+training:
+  trainer_type: TRL_SFT
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 4
+  max_steps: 50
+  output_dir: outputs/train/sft
+
+model:
+  model_name: HuggingFaceTB/SmolLM2-135M-Instruct
+  torch_dtype_str: bfloat16
+  trust_remote_code: true
+
+data:
+  train:
+    datasets:
+      - dataset_name: text_sft
+        dataset_path: data/mimic-iv-bhc/sft.jsonl
+
+
