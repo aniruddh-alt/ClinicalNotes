@@ -2,72 +2,71 @@
 
 ## Motivation
 
-This project aims to provide a end-to-end pipeline for 
+This project provides an end-to-end pipeline for clinical notes summarization using the MIMIC-IV-BHC dataset.
 
-## Project layout (best-practice `src/` layout)
+## Project Layout
 
-- **`src/clinicalnotes_1/`**: library code (strict typing).
-- **`scripts/`**: runnable utilities (thin wrappers).
+- **`src/clinicalnotes_1/`**: Library code (strict typing).
+  - **`data/`**: Data processing and SQLite management.
 - **`configs/oumi/`**: Oumi YAML configs for analyze/train/eval.
-- **`tests/`**: pytest tests.
-- **`physionet.org/`**: mirrored dataset files (as provided in this repo).
+- **`tests/`**: Pytest tests.
+- **`MIMIC-IV-BHC/`**: Raw dataset files (CSV, license).
 
 ## Quickstart
 
-Create/activate env (using `uv`):
+### 1. Setup Environment
+Create/activate environment (using `uv`):
 
 ```bash
 uv sync --all-extras
 ```
 
-Convert the included MIMIC-IV-BHC CSV → JSONL SFT dataset:
+### 2. Load Data into SQLite
+Load the 270K clinical notes into a SQLite database for fast querying:
+
+```bash
+uv run clinicalnotes load-db
+```
+*This creates `data/notes.db`.*
+
+### 3. Convert to Training Format
+Convert the MIMIC-IV-BHC CSV → JSONL SFT dataset for Oumi:
 
 ```bash
 uv run clinicalnotes convert-bhc --out data/mimic-iv-bhc/sft.jsonl
 ```
 
-Analyze the dataset with Oumi:
-
+### 4. Pipeline with Oumi
+Analyze the dataset:
 ```bash
 uv run oumi analyze -c configs/oumi/analyze.yaml
 ```
 
-Run a tiny demo SFT training (change settings before real runs):
-
+Run training:
 ```bash
 uv run oumi train -c configs/oumi/train_sft.yaml
 ```
 
-Run an example eval:
-
+Run evaluation:
 ```bash
 uv run oumi evaluate -c configs/oumi/eval.yaml
 ```
 
-## Tooling
+## Development
 
 - **Format/lint**:
-
-```bash
-uv run ruff format .
-uv run ruff check . --fix
-```
+  ```bash
+  uv run ruff format .
+  uv run ruff check . --fix
+  ```
 
 - **Type check**:
-
-```bash
-uv run ty check
-uv run mypy .
-```
+  ```bash
+  uv run ty check
+  uv run mypy .
+  ```
 
 - **Tests**:
-
-```bash
-uv run pytest
-```
-
-- **Pre-commit** (optional but recommended):
-
-```bash
-uv run pre-commit install
-```
+  ```bash
+  uv run pytest
+  ```
