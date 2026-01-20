@@ -4,7 +4,12 @@ import csv
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+
+SYSTEM_PROMPT = (
+    "You are an expert medical scribe. Summarize the following clinical notes "
+    "into a Brief Hospital Course (BHC) paragraph primarily for other physicians. "
+    "Use professional medical terminology."
+)
 
 
 @dataclass(frozen=True)
@@ -14,37 +19,47 @@ class BhcRow:
     target: str
 
 
-JoinStyle = Literal["plain", "chatml"]
-
-
-def _row_to_text(row: BhcRow, *, join_style: JoinStyle) -> str:
-    prompt = row.input.strip()
-    response = row.target.strip()
-    if join_style == "plain":
-        return f"Instruction:\n{prompt}\n\nResponse:\n{response}\n"
-    if join_style == "chatml":
-        # Conservative, no dependency on tokenizer chat templates.
-        return f"<|user|>\n{prompt}\n<|assistant|>\n{response}\n"
-    raise ValueError(f"Unknown join_style: {join_style}")
+def _row_to_messages(row: BhcRow) -> list[dict[str, str]]:
+    """Convert a BhcRow to the chat messages format."""
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": row.input.strip()},
+        {"role": "assistant", "content": row.target.strip()},
+    ]
 
 
 def convert_csv_to_jsonl_sft(
-    *,
     csv_path: Path,
     out_path: Path,
-    limit: int | None = None,
-    join_style: JoinStyle = "plain",
 ) -> None:
-    """Convert the PhysioNet MIMIC-IV-BHC CSV into JSONL with a `text` field.
+    """Convert the PhysioNet MIMIC-IV-BHC CSV into JSONL with a `messages` field.
 
-    Oumi's `text_sft` dataset class expects a JSONL where each example contains `text`.
+    Output format:
+    ```json
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are an expert medical scribe. Summarize the following clinical notes into a Brief Hospital Course (BHC) paragraph primarily for other physicians. Use professional medical terminology."
+        },
+        {
+          "role": "user",
+          "content": "<SEX> F <SERVICE> SURGERY <ALLERGIES> Patient recorded as having No Known Allergies... [REST OF INPUT COLUMN]"
+        },
+        {
+          "role": "assistant",
+          "content": "The patient was admitted to the Acute Care Surgery service on ___ and was transferred... [TARGET COLUMN]"
+        }
+      ]
+    }
+    ```
     """
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    n_written = 0
-    with csv_path.open("r", encoding="utf-8", newline="") as f_in, out_path.open(
-        "w", encoding="utf-8"
-    ) as f_out:
+    with (
+        csv_path.open("r", encoding="utf-8", newline="") as f_in,
+        out_path.open("w", encoding="utf-8") as f_out,
+    ):
         reader = csv.DictReader(f_in)
         required = {"note_id", "input", "target"}
         if reader.fieldnames is None or not required.issubset(set(reader.fieldnames)):
@@ -59,13 +74,12 @@ def convert_csv_to_jsonl_sft(
                 target=str(raw["target"]),
             )
             ex = {
-                "id": row.note_id,
-                "text": _row_to_text(row, join_style=join_style),
-                "meta": {"source": "physionet/mimic-iv-bhc"},
+                "messages": _row_to_messages(row),
             }
             f_out.write(json.dumps(ex, ensure_ascii=False) + "\n")
-            n_written += 1
-            if limit is not None and n_written >= limit:
-                break
 
 
+if __name__ == "__main__":
+    convert_csv_to_jsonl_sft(
+        Path("MIMIC-IV-BHC/mimic-iv-bhc.csv"), Path("MIMIC-IV-BHC/mimic-iv-bhc.jsonl")
+    )
