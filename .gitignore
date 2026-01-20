@@ -33,3 +33,4 @@ venv/
 MIMIC-IV-BHC/mimic-iv-bhc.csv
 MIMIC-IV-BHC/SHA256SUMS.txt
 MIMIC-IV-BHC/index.html
+MIMIC-IV-BHC/mimic-iv-bhc.jsonl
