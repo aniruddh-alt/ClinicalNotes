@@ -39,15 +39,22 @@ def main() -> None:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Save splits as JSONL files
-        for split_name in ["train", "valid", "test"]:
-            if split_name in dataset:
-                output_file = output_dir / f"{split_name}.jsonl"
-                print(f"Saving {split_name} split to {output_file}...")
+        # Map HuggingFace split names to output file names
+        split_mapping = {
+            "train": "train",
+            "validation": "valid",  # HF uses "validation", we want "valid.jsonl"
+            "test": "test",
+        }
+
+        for hf_split, output_name in split_mapping.items():
+            if hf_split in dataset:
+                output_file = output_dir / f"{output_name}.jsonl"
+                print(f"Saving {hf_split} split to {output_file}...")
 
                 # Save as JSONL
-                dataset[split_name].to_json(output_file, orient="records", lines=True)
+                dataset[hf_split].to_json(output_file, orient="records", lines=True)
 
-                print(f"  ✓ {split_name}.jsonl saved ({len(dataset[split_name])} examples)")
+                print(f"  ✓ {output_name}.jsonl saved ({len(dataset[hf_split])} examples)")
 
         print("\n✓ Dataset download complete!")
         print("\nDatasets available at:")
