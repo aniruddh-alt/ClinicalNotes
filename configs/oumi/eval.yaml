@@ -1,15 +1,14 @@
-evaluation:
-  # Minimal evaluation example (lm_harness).
-  tasks:
-    - evaluation_backend: lm_harness
-      task_name: mmlu_college_computer_science
-  generation:
-    batch_size: null
-  output_dir: outputs/eval
+tasks:
+  - evaluation_backend: lm_harness
+    task_name: mmlu_college_computer_science
+
+generation:
+  batch_size: null
+
+output_dir: /workspace/summarization/outputs/eval
 
 model:
-  # Point this at your output dir after training, or a HF model id.
-  model_name: outputs/train/sft
+  # Change this to your fine-tuned model path or HuggingFace model ID
+  # For local paths, validation may fail but runtime will work
+  model_name: meta-llama/Llama-3.1-8B-Instruct
   torch_dtype_str: bfloat16
-
-

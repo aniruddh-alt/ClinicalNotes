@@ -1,42 +1,43 @@
 model:
   model_name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
-  load_in_4bit: true # Uses QLoRA 4-bit quantization to save VRAM
+  model_max_length: 8192
+  torch_dtype_str: "bfloat16"
   trust_remote_code: true
-  chat_template: "llama3-instruct" # Automatically handles <|begin_of_text|> etc.
+  chat_template: "llama3-instruct"
 
 data:
   train:
     datasets:
-      - type: jsonl
-        path: "/Users/aniruddhanramesh/dev/personal/summarization/MIMIC-IV-BHC/mimic-iv-bhc.jsonl" # <--- POINT THIS TO YOUR FILE
-    stream: false # Set true if dataset is massive (>50GB)
+      - dataset_name: "text_sft"
+        dataset_path: "/Users/aniruddhanramesh/dev/personal/summarization/MIMIC-IV-BHC/mimic-iv-bhc.jsonl"
+    stream: false
 
 training:
   output_dir: "/Users/aniruddhanramesh/dev/personal/summarization/MIMIC-IV-BHC/model"
-  trainer_type: "TRL_SFT" # Uses HuggingFace TRL Supervised Fine-Tuning
+  trainer_type: "TRL_SFT"
+  use_peft: true
 
-  # Crucial for BHC (Long Context)
-  max_seq_length: 8192 # Matches Llama 3 capabilities
-
-  # Hyperparameters
   per_device_train_batch_size: 2
   gradient_accumulation_steps: 4
   learning_rate: 2e-4
-  num_train_epochs: 1 # Start with 1 to test
+  num_train_epochs: 1
   logging_steps: 10
   save_steps: 100
+  enable_wandb: false
 
-  # QLoRA Adapter Settings
-  peft:
-    q_lora: true # Enables 4-bit training
-    lora_r: 16 # Rank
-    lora_alpha: 32 # Alpha (usually 2x Rank)
-    lora_dropout: 0.05
-    target_modules: # Target ALL linear layers (as discussed)
-      - "q_proj"
-      - "k_proj"
-      - "v_proj"
-      - "o_proj"
-      - "gate_proj"
-      - "up_proj"
-      - "down_proj"
+peft:
+  q_lora: true
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_quant_storage: "bfloat16"
+  bnb_4bit_compute_dtype: "bfloat16"
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  lora_target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"

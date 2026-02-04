@@ -1,9 +1,5 @@
-analyze:
-  # Minimal dataset analysis config.
-  dataset_path: data/mimic-iv-bhc/sft.jsonl
-  is_multimodal: false
-  analyzers:
-    - id: length
-  output_path: outputs/analyze/mimic-iv-bhc
-
-
+dataset_path: /Users/aniruddhanramesh/dev/personal/summarization/MIMIC-IV-BHC/oncology-splits/train.jsonl
+is_multimodal: false
+analyzers:
+  - id: length
+output_path: outputs/analyze/mimic-iv-bhc
