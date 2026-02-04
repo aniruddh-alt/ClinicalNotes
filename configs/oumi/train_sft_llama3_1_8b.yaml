@@ -11,17 +11,17 @@ model:
 data:
   train:
     datasets:
-      - type: jsonl
-        path: "/Users/aniruddhanramesh/dev/personal/summarization/MIMIC-IV-BHC/splits/train.jsonl"
+      - dataset_name: "text_sft"
+        dataset_path: "/workspace/summarization/MIMIC-IV-BHC/oncology-splits/train.jsonl"
     stream: false
   validation:
     datasets:
-      - type: jsonl
-        path: "/Users/aniruddhanramesh/dev/personal/summarization/MIMIC-IV-BHC/splits/valid.jsonl"
+      - dataset_name: "text_sft"
+        dataset_path: "/workspace/summarization/MIMIC-IV-BHC/oncology-splits/valid.jsonl"
     stream: false
 
 training:
-  output_dir: "/Users/aniruddhanramesh/dev/personal/summarization/MIMIC-IV-BHC/model-llama3_1-8b"
+  output_dir: "/workspace/summarization/outputs/model-llama3_1-8b"
   trainer_type: "TRL_SFT"
   use_peft: true
   enable_gradient_checkpointing: true
