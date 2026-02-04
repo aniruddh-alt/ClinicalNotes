@@ -38,26 +38,31 @@ Create/activate environment (using `uv`):
 uv sync --all-extras
 ```
 
-### 2. Download Datasets (via DVC)
+### 2. Download Datasets
 
-**On your local machine** (if you have the original data):
+**Option A: From Hugging Face (Recommended for GPU providers)**
+
+The oncology splits are hosted on a private HF dataset:
+
 ```bash
-# Datasets are already tracked by DVC
-# The .dvc files are in git, data files are in .gitignore
+# Login to Hugging Face (one-time)
+huggingface-cli login
+
+# Download datasets
+python scripts/download_data_hf.py
 ```
 
-**On GPU provider / new machine**:
+**Dataset**: [aniruddhr04/mimic-iv-bhc-oncology](https://huggingface.co/datasets/aniruddhr04/mimic-iv-bhc-oncology) (private)
+
+**Option B: Via DVC** (if you've configured remote storage)
+
 ```bash
 # Install DVC
 pip install dvc[s3]
 
 # Download datasets
 bash scripts/download_data.sh
-# or
-python scripts/download_data.py
 ```
-
-**Note**: You'll need to configure DVC remote storage first (see "Setting up DVC Remote" below).
 
 ### 3. Load Data into SQLite
 Load the 270K clinical notes into a SQLite database for fast querying:
@@ -112,14 +117,16 @@ uv run oumi train -c configs/oumi/train_sft_phi_mini.yaml
    pip install -e ".[data]"
    ```
 
-3. Download datasets using DVC:
+3. Login to Hugging Face and download datasets:
    ```bash
-   bash scripts/download_data.sh
+   huggingface-cli login
+   python scripts/download_data_hf.py
    ```
 
 4. Verify datasets are available:
    ```bash
    ls -lh MIMIC-IV-BHC/oncology-splits/
+   # Should show: train.jsonl, valid.jsonl, test.jsonl
    ```
 
 5. Start training:
@@ -128,6 +135,8 @@ uv run oumi train -c configs/oumi/train_sft_phi_mini.yaml
    ```
 
 **Note**: If you use a different filesystem path, update the dataset paths in `configs/oumi/*.yaml`.
+
+**Access**: You must have access to the private HF dataset: [aniruddhr04/mimic-iv-bhc-oncology](https://huggingface.co/datasets/aniruddhr04/mimic-iv-bhc-oncology)
 
 Run evaluation:
 ```bash
