@@ -23,6 +23,9 @@ data = [
     "dvc[s3]>=3.0.0",
     "huggingface-hub>=0.20.0",
 ]
+gpu = [
+    "bitsandbytes>=0.43.0",  # Required for QLoRA 4-bit quantization
+]
 
 [project.scripts]
 clinicalnotes = "clinicalnotes_1.cli:main"
