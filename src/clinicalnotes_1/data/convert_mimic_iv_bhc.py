@@ -28,9 +28,24 @@ def _row_to_messages(row: BhcRow) -> list[dict[str, str]]:
     ]
 
 
+def _messages_to_text(messages: list[dict[str, str]], join_style: str) -> str:
+    """Create a text field from messages for SFT training."""
+    if join_style == "plain":
+        return "\n\n".join(message["content"].strip() for message in messages)
+    if join_style == "chatml":
+        chunks = [
+            f"<|{message['role']}|>\n{message['content'].strip()}"
+            for message in messages
+        ]
+        return "\n".join(chunks) + "\n<|end|>"
+    raise ValueError(f"Unsupported join_style: {join_style}")
+
+
 def convert_csv_to_jsonl_sft(
     csv_path: Path,
     out_path: Path,
+    limit: int | None = None,
+    join_style: str = "plain",
 ) -> None:
     """Convert the PhysioNet MIMIC-IV-BHC CSV into JSONL with a `messages` field.
 
@@ -67,15 +82,16 @@ def convert_csv_to_jsonl_sft(
                 f"Unexpected CSV header. Expected at least {sorted(required)}; got {reader.fieldnames}"
             )
 
-        for raw in reader:
+        for idx, raw in enumerate(reader):
+            if limit is not None and idx >= limit:
+                break
             row = BhcRow(
                 note_id=str(raw["note_id"]),
                 input=str(raw["input"]),
                 target=str(raw["target"]),
             )
-            ex = {
-                "messages": _row_to_messages(row),
-            }
+            messages = _row_to_messages(row)
+            ex = {"messages": messages, "text": _messages_to_text(messages, join_style)}
             f_out.write(json.dumps(ex, ensure_ascii=False) + "\n")
 
 

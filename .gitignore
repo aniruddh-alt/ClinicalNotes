@@ -27,10 +27,14 @@ venv/
 *.db
 *.sqlite
 
-# Keep PhysioNet mirror in-repo if desired, but ignore derived artifacts
-/physionet.org/**/*.jsonl
-/physionet.org/**/*.parquet
-MIMIC-IV-BHC/mimic-iv-bhc.csv
+# Datasets - managed by DVC
+MIMIC-IV-BHC/*.csv
+MIMIC-IV-BHC/*.jsonl
+MIMIC-IV-BHC/oncology-splits/
 MIMIC-IV-BHC/SHA256SUMS.txt
 MIMIC-IV-BHC/index.html
-MIMIC-IV-BHC/mimic-iv-bhc.jsonl
+/physionet.org/**/*.jsonl
+/physionet.org/**/*.parquet
+
+# DVC
+/dvc_cache/

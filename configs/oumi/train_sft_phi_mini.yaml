@@ -1,0 +1,45 @@
+model:
+  model_name: "microsoft/Phi-3-mini-4k-instruct"
+  model_max_length: 4096
+  torch_dtype_str: "bfloat16"
+  trust_remote_code: true
+
+data:
+  train:
+    datasets:
+      - type: jsonl
+        path: "/Users/aniruddhanramesh/dev/personal/summarization/MIMIC-IV-BHC/splits/train.jsonl"
+    stream: false
+  validation:
+    datasets:
+      - type: jsonl
+        path: "/Users/aniruddhanramesh/dev/personal/summarization/MIMIC-IV-BHC/splits/valid.jsonl"
+    stream: false
+
+training:
+  output_dir: "/Users/aniruddhanramesh/dev/personal/summarization/MIMIC-IV-BHC/model-phi-mini"
+  trainer_type: "TRL_SFT"
+  use_peft: true
+  optimizer: "adamw_torch"
+
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 4
+  learning_rate: 2e-4
+  num_train_epochs: 1
+  logging_steps: 10
+  save_steps: 100
+  enable_wandb: false
+
+peft:
+  q_lora: false
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  lora_target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"

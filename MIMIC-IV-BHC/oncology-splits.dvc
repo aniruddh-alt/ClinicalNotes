@@ -1,0 +1,6 @@
+outs:
+- md5: 4004cb561e115c05c2eea8229f3b1e6d.dir
+  size: 214620383
+  nfiles: 3
+  hash: md5
+  path: oncology-splits
