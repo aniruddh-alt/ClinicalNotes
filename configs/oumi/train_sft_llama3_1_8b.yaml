@@ -1,11 +1,11 @@
 model:
   model_name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
-  model_max_length: 8192
+  model_max_length: 2048  # Reduced for faster training
   torch_dtype_str: "bfloat16"
-  attn_implementation: "sdpa"
+  attn_implementation: "flash_attention_2"  # Much faster than sdpa
   load_pretrained_weights: true
   trust_remote_code: true
-  enable_liger_kernel: false
+  enable_liger_kernel: true  # 20-30% speedup
   chat_template: "llama3-instruct"
 
 data:
@@ -32,16 +32,16 @@ training:
   lr_scheduler_type: "cosine"
   warmup_steps: 100
 
-  per_device_train_batch_size: 2
-  gradient_accumulation_steps: 4
+  per_device_train_batch_size: 4  # Increased - A40 has plenty of VRAM
+  gradient_accumulation_steps: 2  # Reduced to maintain effective batch 8
   learning_rate: 2e-4
   num_train_epochs: 1
   logging_steps: 10
-  save_steps: 100
+  save_steps: 200
   log_model_summary: false
-  empty_device_cache_steps: 50
   include_performance_metrics: true
   enable_wandb: false
+  dataloader_num_workers: 4  # Faster data loading
 
 peft:
   q_lora: true
