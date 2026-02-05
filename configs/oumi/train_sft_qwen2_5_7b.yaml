@@ -6,7 +6,6 @@ model:
   load_pretrained_weights: true
   trust_remote_code: true
   enable_liger_kernel: true
-  chat_template: "qwen2-instruct"
 
 data:
   train:

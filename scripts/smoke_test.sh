@@ -31,7 +31,7 @@ echo ""
 
 # ─── 1. GPU / CUDA ──────────────────────────────────────────────────
 echo "[1/5] Checking GPU / CUDA..."
-if uv run python -c "import torch; assert torch.cuda.is_available(), 'No CUDA'; print(f'  GPU: {torch.cuda.get_device_name(0)}'); print(f'  VRAM: {torch.cuda.get_device_properties(0).total_mem / 1e9:.1f} GB')" 2>/dev/null; then
+if uv run python -c "import torch; assert torch.cuda.is_available(), 'No CUDA'; print(f'  GPU: {torch.cuda.get_device_name(0)}'); print(f'  VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB')" 2>/dev/null; then
     pass "CUDA available"
 else
     fail "CUDA not available - training will not work"
@@ -99,6 +99,13 @@ if uv run python -c "import flash_attn" 2>/dev/null; then
 else
     warn "flash-attn not installed - Llama config may fall back to sdpa"
 fi
+
+# liger-kernel (needed for Llama + Qwen configs)
+if uv run python -c "import liger_kernel" 2>/dev/null; then
+    pass "liger-kernel"
+else
+    fail "liger-kernel not importable - Llama and Qwen configs will fail (pip install liger-kernel)"
+fi
 echo ""
 
 # ─── 4. HuggingFace model access ────────────────────────────────────
@@ -143,16 +150,20 @@ for entry in "${CONFIGS[@]}"; do
     echo "  Testing: ${name} (${config})..."
 
     # Override to run only 1 step with minimal resources
+    smoke_log="/tmp/smoke_test_${name// /_}.log"
     if uv run oumi train -c "${config}" \
         --training.max_steps=1 \
         --training.save_steps=0 \
         --training.logging_steps=1 \
         --training.num_train_epochs=1 \
         --training.output_dir="/tmp/smoke_test_${name// /_}" \
-        2>&1 | tail -5; then
+        > "${smoke_log}" 2>&1; then
         pass "${name} - training starts successfully"
     else
         fail "${name} - training failed to start"
+        echo "  --- Error log (last 30 lines) ---"
+        tail -30 "${smoke_log}"
+        echo "  --- End error log ---"
     fi
     echo ""
 

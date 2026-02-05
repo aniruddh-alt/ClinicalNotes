@@ -25,6 +25,7 @@ data = [
 ]
 gpu = [
     "bitsandbytes>=0.43.0",  # Required for QLoRA 4-bit quantization
+    "liger-kernel>=0.5.0",   # Fused kernels for 20-30% training speedup
 ]
 
 [project.scripts]

@@ -54,11 +54,15 @@ uv sync --all-extras
 echo "  Done."
 echo ""
 
-# ─── Step 3: Install flash-attn (required for Llama config) ────────
-echo "[3/6] Installing flash-attn..."
+# ─── Step 3: Install flash-attn + liger-kernel ──────────────────────
+echo "[3/6] Installing flash-attn and liger-kernel..."
 uv pip install flash-attn --no-build-isolation 2>/dev/null || {
     echo "  Warning: flash-attn installation failed."
     echo "  Llama config uses flash_attention_2 - training may fall back to sdpa."
+}
+uv pip install liger-kernel || {
+    echo "  Warning: liger-kernel installation failed."
+    echo "  Llama and Qwen configs use enable_liger_kernel."
 }
 echo "  Done."
 echo ""
