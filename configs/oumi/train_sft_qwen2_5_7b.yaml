@@ -1,8 +1,8 @@
 model:
   model_name: "Qwen/Qwen2.5-7B-Instruct"
-  model_max_length: 16384
+  model_max_length: 2048  # Reduced from 16384 - was the #1 slowdown
   torch_dtype_str: "bfloat16"
-  attn_implementation: "sdpa"
+  attn_implementation: "flash_attention_2"  # Much faster than sdpa, especially at long seqs
   load_pretrained_weights: true
   trust_remote_code: true
   enable_liger_kernel: true
@@ -31,17 +31,17 @@ training:
   lr_scheduler_type: "cosine"
   warmup_ratio: 0.03
 
-  per_device_train_batch_size: 2
-  gradient_accumulation_steps: 4
+  per_device_train_batch_size: 4  # Increased - better GPU utilization
+  gradient_accumulation_steps: 2  # Reduced to keep effective batch size = 8
   learning_rate: 2e-4
   num_train_epochs: 1
   logging_steps: 10
-  save_steps: 100
+  save_steps: 200
   save_final_model: true
-  empty_device_cache_steps: 1
   include_performance_metrics: true
   log_model_summary: false
   enable_wandb: false
+  dataloader_num_workers: 4  # Parallel data loading
 
 peft:
   q_lora: true
