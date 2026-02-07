@@ -27,6 +27,6 @@ tasks:
     eval_kwargs:
       dataset_path: "/workspace/summarization/MIMIC-IV-BHC/oncology-splits/test.jsonl"
 
-inference_engine: VLLM  # Much faster than NATIVE for batch inference
+inference_engine: NATIVE
 
 output_dir: "/workspace/summarization/outputs/eval-llama3_1-8b"
