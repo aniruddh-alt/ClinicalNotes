@@ -11,13 +11,13 @@
 model:
   model_name: "Qwen/Qwen2.5-7B-Instruct"
   adapter_model: "/workspace/summarization/outputs/model-qwen2_5-7b"
-  model_max_length: 2048
+  model_max_length: 4096  # Must cover input length, some notes are 2500+ tokens
   torch_dtype_str: "bfloat16"
   attn_implementation: "flash_attention_2"
   trust_remote_code: true
 
 generation:
-  max_new_tokens: 512
+  max_new_tokens: 256
   batch_size: 1
 
 tasks:
