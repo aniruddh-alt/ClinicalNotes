@@ -42,6 +42,7 @@ def rouge_summarization(
 
     dataset = build_dataset(
         dataset_name="text_sft",
+        tokenizer=None,
         dataset_path=dataset_path,
     )
 
