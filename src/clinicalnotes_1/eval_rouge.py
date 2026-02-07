@@ -10,15 +10,47 @@ Usage:
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
-from oumi.builders import build_dataset
 from oumi.core.configs import EvaluationConfig
 from oumi.core.configs.params.evaluation_params import EvaluationTaskParams
 from oumi.core.inference import BaseInferenceEngine
 from oumi.core.registry import register_evaluation_function
-from oumi.core.types.conversation import Conversation, Role
+from oumi.core.types.conversation import Conversation, Message, Role
 from rouge_score import rouge_scorer
+
+
+def _load_conversations(dataset_path: str, num_samples: int | None) -> tuple[list[str], list[Conversation]]:
+    """Load JSONL file and split into references and input conversations."""
+    references: list[str] = []
+    input_conversations: list[Conversation] = []
+
+    with Path(dataset_path).open() as f:
+        for i, line in enumerate(f):
+            if num_samples is not None and i >= num_samples:
+                break
+
+            record = json.loads(line)
+            messages = record.get("messages", [])
+
+            reference = ""
+            input_messages: list[Message] = []
+            for msg in messages:
+                role_str = msg.get("role", "")
+                content = msg.get("content", "")
+                if role_str == "assistant":
+                    reference = content
+                else:
+                    input_messages.append(
+                        Message(role=Role.USER, content=content)
+                    )
+
+            references.append(reference)
+            input_conversations.append(Conversation(messages=input_messages))
+
+    return references, input_conversations
 
 
 @register_evaluation_function("rouge_summarization")
@@ -31,7 +63,7 @@ def rouge_summarization(
     """Evaluate summarization quality using ROUGE scores.
 
     The dataset is loaded from the path specified in eval_kwargs.dataset_path.
-    It expects text_sft format with user/assistant message pairs where the
+    It expects text_sft JSONL format with user/assistant message pairs where the
     assistant message is the reference summary. We strip it before inference,
     generate a new summary, and compare with ROUGE.
     """
@@ -40,38 +72,12 @@ def rouge_summarization(
             "eval_kwargs.dataset_path must be set to the path of the test JSONL file."
         )
 
-    dataset = build_dataset(
-        dataset_name="text_sft",
-        tokenizer=None,
-        dataset_path=dataset_path,
-    )
-
-    num_samples = task_params.num_samples
-    if num_samples is None:
-        num_samples = len(dataset)
-
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeL"], use_stemmer=True)
 
-    # Extract reference summaries and build input-only conversations
-    references: list[str] = []
-    input_conversations: list[Conversation] = []
-
-    for i in range(num_samples):
-        conversation = dataset.conversation(i)
-
-        # Find the reference assistant message and keep only user messages
-        reference = ""
-        input_messages = []
-        for message in conversation.messages:
-            if message.role == Role.ASSISTANT:
-                reference = message.content or ""
-            else:
-                input_messages.append(message)
-
-        references.append(reference)
-        input_conversations.append(
-            Conversation(messages=input_messages, metadata=conversation.metadata)
-        )
+    # Load conversations from JSONL, splitting references from inputs
+    references, input_conversations = _load_conversations(
+        dataset_path, task_params.num_samples
+    )
 
     # Run inference — model generates new assistant messages
     output_conversations = inference_engine.infer(input_conversations)
