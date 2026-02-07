@@ -9,9 +9,8 @@
 #   oumi evaluate -c configs/oumi/eval_qwen2_5_7b.yaml
 
 model:
-  model_name: "Qwen/Qwen2.5-7B-Instruct"
-  adapter_model: "/workspace/summarization/outputs/model-qwen2_5-7b"
-  model_max_length: 4096  # Must cover input length, some notes are 2500+ tokens
+  model_name: "/workspace/summarization/outputs/model-qwen2_5-7b-merged"
+  model_max_length: 4096
   torch_dtype_str: "bfloat16"
   attn_implementation: "flash_attention_2"
   trust_remote_code: true

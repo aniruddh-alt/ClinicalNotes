@@ -9,9 +9,8 @@
 #   oumi evaluate -c configs/oumi/eval_llama3_1_8b.yaml
 
 model:
-  model_name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
-  adapter_model: "/workspace/summarization/outputs/model-llama3_1-8b"
-  model_max_length: 4096  # Must cover input length, some notes are 2500+ tokens
+  model_name: "/workspace/summarization/outputs/model-llama3_1-8b-merged"
+  model_max_length: 4096
   torch_dtype_str: "bfloat16"
   attn_implementation: "flash_attention_2"
   trust_remote_code: true
