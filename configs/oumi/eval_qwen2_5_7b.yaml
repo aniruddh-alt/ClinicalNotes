@@ -15,7 +15,7 @@ model:
 
 generation:
   max_new_tokens: 256
-  batch_size: 32
+  batch_size: 4
 
 tasks:
   - evaluation_backend: custom
