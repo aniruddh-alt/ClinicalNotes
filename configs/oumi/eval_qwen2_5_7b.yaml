@@ -1,0 +1,31 @@
+# ROUGE evaluation for fine-tuned Qwen 2.5 7B.
+#
+# Requirements:
+#   - pip install rouge-score
+#   - The custom eval function must be imported before running. Use the
+#     wrapper script: python scripts/run_eval.py qwen
+#
+# Usage:
+#   oumi evaluate -c configs/oumi/eval_qwen2_5_7b.yaml
+
+model:
+  model_name: "Qwen/Qwen2.5-7B-Instruct"
+  adapter_model: "/workspace/summarization/outputs/model-qwen2_5-7b"
+  model_max_length: 2048
+  torch_dtype_str: "bfloat16"
+  attn_implementation: "flash_attention_2"
+  trust_remote_code: true
+
+generation:
+  max_new_tokens: 512
+  batch_size: 4
+
+tasks:
+  - evaluation_backend: custom
+    task_name: rouge_summarization
+    eval_kwargs:
+      dataset_path: "/workspace/summarization/MIMIC-IV-BHC/oncology-splits/test.jsonl"
+
+inference_engine: NATIVE
+
+output_dir: "/workspace/summarization/outputs/eval-qwen2_5-7b"

@@ -4,7 +4,7 @@ model:
   torch_dtype_str: "bfloat16"
   attn_implementation: "flash_attention_2"  # Was defaulting to eager attention (OOM)
   trust_remote_code: true
-  enable_liger_kernel: true
+  enable_liger_kernel: false
 
 data:
   train:
