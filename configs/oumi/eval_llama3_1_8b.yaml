@@ -18,14 +18,15 @@ model:
 
 generation:
   max_new_tokens: 512
-  batch_size: 4
+  batch_size: 1
 
 tasks:
   - evaluation_backend: custom
     task_name: rouge_summarization
+    num_samples: 20  # Start small to verify it works, then increase
     eval_kwargs:
       dataset_path: "/workspace/summarization/MIMIC-IV-BHC/oncology-splits/test.jsonl"
 
-inference_engine: NATIVE
+inference_engine: VLLM  # Much faster than NATIVE for batch inference
 
 output_dir: "/workspace/summarization/outputs/eval-llama3_1-8b"
