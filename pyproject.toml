@@ -25,10 +25,13 @@ data = [
 ]
 gpu = [
     "bitsandbytes>=0.43.0",  # Required for QLoRA 4-bit quantization
+    "flash-attn>=2.5.0",     # Flash Attention 2 for fast attention
     "liger-kernel>=0.5.0",   # Fused kernels for 20-30% training speedup
 ]
 eval = [
     "rouge-score>=0.1.2",
+    "sacrebleu>=2.4.0",
+    "bert-score>=0.3.13",
 ]
 
 [project.scripts]

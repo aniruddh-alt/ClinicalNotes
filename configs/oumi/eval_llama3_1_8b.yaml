@@ -1,8 +1,5 @@
-# ROUGE evaluation for fine-tuned Llama 3.1 8B.
-#
-# Requirements:
-#   - pip install rouge-score vllm
-#   - Merge adapter first: python scripts/merge_adapter.py
+# Summarization evaluation for fine-tuned Llama 3.1 8B.
+# Computes ROUGE-L, BLEU, and BERTScore (mirroring MIMIC-IV-BHC paper).
 #
 # Usage:
 #   bash scripts/run_eval.sh llama
@@ -11,19 +8,20 @@ model:
   model_name: "/workspace/summarization/outputs/model-llama3_1-8b-merged"
   model_max_length: 4096
   torch_dtype_str: "bfloat16"
+  attn_implementation: "sdpa"
   trust_remote_code: true
 
 generation:
   max_new_tokens: 256
-  batch_size: 4
+  batch_size: 1
 
 tasks:
   - evaluation_backend: custom
-    task_name: rouge_summarization
+    task_name: summarization_metrics
     num_samples: 100
     eval_kwargs:
       dataset_path: "/workspace/summarization/MIMIC-IV-BHC/oncology-splits/test.jsonl"
 
-inference_engine: VLLM
+inference_engine: NATIVE
 
 output_dir: "/workspace/summarization/outputs/eval-llama3_1-8b"
