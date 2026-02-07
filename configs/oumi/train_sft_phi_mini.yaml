@@ -1,8 +1,10 @@
 model:
   model_name: "microsoft/Phi-3-mini-4k-instruct"
-  model_max_length: 4096
+  model_max_length: 2048  # Reduced from 4096 to save memory
   torch_dtype_str: "bfloat16"
+  attn_implementation: "flash_attention_2"  # Was defaulting to eager attention (OOM)
   trust_remote_code: true
+  enable_liger_kernel: true
 
 data:
   train:
@@ -20,18 +22,28 @@ training:
   output_dir: "/workspace/summarization/outputs/model-phi-mini"
   trainer_type: "TRL_SFT"
   use_peft: true
-  optimizer: "adamw_torch"
+  enable_gradient_checkpointing: true  # Big VRAM savings
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  optimizer: "adamw_torch_fused"
 
-  per_device_train_batch_size: 2
-  gradient_accumulation_steps: 4
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 2
   learning_rate: 2e-4
   num_train_epochs: 1
   logging_steps: 10
-  save_steps: 100
+  save_steps: 200
+  save_final_model: true
+  include_performance_metrics: true
+  log_model_summary: false
   enable_wandb: false
+  dataloader_num_workers: 4
 
 peft:
-  q_lora: false
+  q_lora: true  # Quantized LoRA for lower memory usage
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_quant_storage: "bfloat16"
+  bnb_4bit_compute_dtype: "bfloat16"
   lora_r: 16
   lora_alpha: 32
   lora_dropout: 0.05
