@@ -58,6 +58,10 @@ if [ "${MODEL_FILTER}" = "all" ] || [ "${MODEL_FILTER}" = "qwen" ]; then
     run_eval "Qwen 2.5 7B" "configs/oumi/eval_qwen2_5_7b.yaml"
 fi
 
+if [ "${MODEL_FILTER}" = "all" ] || [ "${MODEL_FILTER}" = "phi" ]; then
+    run_eval "Phi-3 Mini" "configs/oumi/eval_phi_mini.yaml"
+fi
+
 echo ""
 echo "============================================"
 echo "  Evaluation complete!"
