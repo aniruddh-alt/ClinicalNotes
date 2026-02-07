@@ -26,6 +26,7 @@ def rouge_summarization(
     task_params: EvaluationTaskParams,
     config: EvaluationConfig,
     inference_engine: BaseInferenceEngine,
+    dataset_path: str = "",
 ) -> dict[str, Any]:
     """Evaluate summarization quality using ROUGE scores.
 
@@ -34,7 +35,6 @@ def rouge_summarization(
     assistant message is the reference summary. We strip it before inference,
     generate a new summary, and compare with ROUGE.
     """
-    dataset_path = task_params.eval_kwargs.get("dataset_path", "")
     if not dataset_path:
         raise ValueError(
             "eval_kwargs.dataset_path must be set to the path of the test JSONL file."
