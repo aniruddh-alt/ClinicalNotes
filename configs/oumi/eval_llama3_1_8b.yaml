@@ -9,11 +9,12 @@ model:
   model_max_length: 4096
   torch_dtype_str: "bfloat16"
   attn_implementation: "sdpa"
+  load_pretrained_weights: true
   trust_remote_code: true
 
 generation:
   max_new_tokens: 256
-  batch_size: 1
+  batch_size: 4
 
 tasks:
   - evaluation_backend: custom
@@ -22,6 +23,6 @@ tasks:
     eval_kwargs:
       dataset_path: "/workspace/summarization/MIMIC-IV-BHC/oncology-splits/test.jsonl"
 
-inference_engine: NATIVE
+inference_engine: VLLM
 
 output_dir: "/workspace/summarization/outputs/eval-llama3_1-8b"
