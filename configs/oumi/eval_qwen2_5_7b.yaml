@@ -23,6 +23,6 @@ tasks:
     eval_kwargs:
       dataset_path: "/workspace/summarization/MIMIC-IV-BHC/oncology-splits/test.jsonl"
 
-inference_engine: VLLM
+inference_engine: NATIVE
 
 output_dir: "/workspace/summarization/outputs/eval-qwen2_5-7b"
