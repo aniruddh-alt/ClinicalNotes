@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Evaluate fine-tuned summarization models with ROUGE, BLEU, and BERTScore.
 
-Downloads adapters from HuggingFace, merges into base models, runs inference,
-and computes metrics mirroring the MIMIC-IV-BHC paper's evaluation protocol.
+Downloads adapters from HuggingFace, merges into base models, runs inference
+via vLLM for fast batch generation, and computes metrics mirroring the
+MIMIC-IV-BHC paper's evaluation protocol.
 
 Usage:
     # Evaluate all three models on 100 test samples
@@ -13,6 +14,9 @@ Usage:
 
     # Evaluate with all test samples
     python scripts/evaluate_models.py --num-samples 0
+
+    # Fall back to native transformers if vLLM isn't available
+    python scripts/evaluate_models.py --engine native --num-samples 20
 """
 
 from __future__ import annotations
@@ -93,70 +97,118 @@ def load_test_data(
     return examples
 
 
-# ── Model loading & inference ────────────────────────────────────────────────
+# ── Model loading (merge adapter into base) ─────────────────────────────────
 
-def load_merged_model(spec: ModelSpec, cache_dir: str | None = None):
-    """Download adapter from HF, merge into base model, return model + tokenizer."""
-    print(f"\n{'='*60}")
-    print(f"  Loading: {spec.name}")
-    print(f"  Base:    {spec.base_model}")
-    print(f"  Adapter: {spec.adapter_repo}")
-    print(f"{'='*60}")
-
-    merged_path = Path(cache_dir or "/workspace/summarization/outputs") / f"model-{spec.output_key}-merged"
+def merge_model(spec: ModelSpec, cache_dir: str) -> Path:
+    """Download adapter from HF, merge into base, save to disk. Returns path."""
+    merged_path = Path(cache_dir) / f"model-{spec.output_key}-merged"
 
     if merged_path.exists() and any(merged_path.glob("*.safetensors")):
         print(f"  Using cached merged model at {merged_path}")
-        model = AutoModelForCausalLM.from_pretrained(
-            str(merged_path),
-            torch_dtype=torch.bfloat16,
-            device_map="auto",
-            trust_remote_code=True,
+        return merged_path
+
+    print(f"  Downloading base model: {spec.base_model}")
+    base_model = AutoModelForCausalLM.from_pretrained(
+        spec.base_model,
+        torch_dtype=torch.bfloat16,
+        device_map="cpu",
+        trust_remote_code=True,
+    )
+
+    print(f"  Downloading adapter: {spec.adapter_repo}")
+    model = PeftModel.from_pretrained(base_model, spec.adapter_repo)
+
+    print("  Merging adapter into base model...")
+    model = model.merge_and_unload()
+
+    print(f"  Saving merged model to {merged_path}")
+    merged_path.mkdir(parents=True, exist_ok=True)
+    model.save_pretrained(str(merged_path))
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        spec.adapter_repo, trust_remote_code=True
+    )
+    tokenizer.save_pretrained(str(merged_path))
+
+    del model, base_model
+    torch.cuda.empty_cache()
+
+    return merged_path
+
+
+# ── Inference engines ────────────────────────────────────────────────────────
+
+def generate_vllm(
+    model_path: Path,
+    examples: list[dict[str, str]],
+    max_new_tokens: int = 256,
+) -> list[str]:
+    """Generate summaries using vLLM (fast, batched, paged attention)."""
+    from vllm import LLM, SamplingParams
+
+    print("  Loading model with vLLM...")
+    llm = LLM(
+        model=str(model_path),
+        dtype="bfloat16",
+        trust_remote_code=True,
+        max_model_len=4096,
+    )
+    tokenizer = llm.get_tokenizer()
+
+    # Build prompts using chat template
+    prompts = []
+    for ex in examples:
+        messages = [{"role": "user", "content": ex["input"]}]
+        text = tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
         )
-        tokenizer = AutoTokenizer.from_pretrained(
-            str(merged_path), trust_remote_code=True
-        )
-    else:
-        print("  Downloading and merging...")
-        base_model = AutoModelForCausalLM.from_pretrained(
-            spec.base_model,
-            torch_dtype=torch.bfloat16,
-            device_map="cpu",
-            trust_remote_code=True,
-        )
-        model = PeftModel.from_pretrained(base_model, spec.adapter_repo)
-        model = model.merge_and_unload()
+        prompts.append(text)
 
-        print(f"  Saving merged model to {merged_path}")
-        merged_path.mkdir(parents=True, exist_ok=True)
-        model.save_pretrained(str(merged_path))
+    sampling_params = SamplingParams(
+        max_tokens=max_new_tokens,
+        temperature=0,  # Greedy for reproducibility
+    )
 
-        tokenizer = AutoTokenizer.from_pretrained(
-            spec.adapter_repo, trust_remote_code=True
-        )
-        tokenizer.save_pretrained(str(merged_path))
+    print(f"  Generating {len(prompts)} summaries with vLLM...")
+    start = time.time()
+    outputs = llm.generate(prompts, sampling_params)
+    elapsed = time.time() - start
 
-        # Move to GPU after saving
-        model = model.to("cuda")
+    generated = [output.outputs[0].text.strip() for output in outputs]
+    print(f"  vLLM inference complete: {len(generated)} examples in {elapsed:.1f}s "
+          f"({elapsed/len(generated):.1f}s/example)")
 
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = "left"  # Required for correct batch generation
+    # Free GPU memory
+    del llm
+    torch.cuda.empty_cache()
 
-    return model, tokenizer
+    return generated
 
 
-def generate_summaries(
-    model,
-    tokenizer,
+def generate_native(
+    model_path: Path,
     examples: list[dict[str, str]],
     max_new_tokens: int = 256,
     batch_size: int = 4,
 ) -> list[str]:
-    """Generate summaries for all examples using batched inference."""
+    """Generate summaries using native transformers (fallback)."""
+    print("  Loading model with transformers...")
+    model = AutoModelForCausalLM.from_pretrained(
+        str(model_path),
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        trust_remote_code=True,
+    )
+    tokenizer = AutoTokenizer.from_pretrained(
+        str(model_path), trust_remote_code=True
+    )
+
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
+
     model.eval()
     generated = []
-
     total = len(examples)
     start = time.time()
 
@@ -176,19 +228,17 @@ def generate_summaries(
             return_tensors="pt",
             padding=True,
             truncation=True,
-            max_length=3584,  # Leave room for generation
+            max_length=3584,
         ).to(model.device)
 
         with torch.no_grad():
             outputs = model.generate(
                 **encodings,
                 max_new_tokens=max_new_tokens,
-                do_sample=False,  # Greedy for reproducibility
-                temperature=1.0,
+                do_sample=False,
                 pad_token_id=tokenizer.pad_token_id,
             )
 
-        # Decode only the new tokens
         for j, output in enumerate(outputs):
             input_len = encodings["input_ids"][j].shape[0]
             new_tokens = output[input_len:]
@@ -199,15 +249,14 @@ def generate_summaries(
         elapsed = time.time() - start
         rate = elapsed / done if done > 0 else 0
         eta = rate * (total - done)
-        print(
-            f"  Generated {done}/{total} "
-            f"({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)",
-            end="\r",
-        )
+        print(f"  Generated {done}/{total} ({elapsed:.0f}s elapsed, ~{eta:.0f}s remaining)", end="\r")
 
     elapsed = time.time() - start
-    print(f"\n  Inference complete: {total} examples in {elapsed:.1f}s "
+    print(f"\n  Native inference complete: {total} examples in {elapsed:.1f}s "
           f"({elapsed/total:.1f}s/example)")
+
+    del model
+    torch.cuda.empty_cache()
 
     return generated
 
@@ -231,7 +280,7 @@ def bootstrap_ci(
 
 def compute_all_metrics(
     references: list[str], generated: list[str]
-) -> dict[str, any]:
+) -> tuple[dict, dict]:
     """Compute ROUGE, BLEU, and BERTScore with CIs."""
     print("  Computing ROUGE...")
     scorer = rouge_scorer.RougeScorer(
@@ -258,7 +307,8 @@ def compute_all_metrics(
     bert_f1 = bert_f1.tolist()
 
     # Aggregate with CIs
-    metrics: dict[str, any] = {}
+    metrics: dict[str, dict] = {}
+    per_example: dict[str, list[float]] = {}
     for name, vals in [
         ("rouge1_f", rouge1_f),
         ("rouge2_f", rouge2_f),
@@ -273,14 +323,9 @@ def compute_all_metrics(
             "std": float(arr.std()),
             "ci95": [ci_lo, ci_hi],
         }
+        per_example[name] = vals
 
-    return metrics, {
-        "rouge1_f": rouge1_f,
-        "rouge2_f": rouge2_f,
-        "rougeL_f": rougeL_f,
-        "bleu": bleu_scores,
-        "bertscore_f1": bert_f1,
-    }
+    return metrics, per_example
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -335,10 +380,16 @@ def main():
         help="Directory to save results",
     )
     parser.add_argument(
+        "--engine",
+        choices=["vllm", "native"],
+        default="vllm",
+        help="Inference engine: vllm (fast) or native (fallback)",
+    )
+    parser.add_argument(
         "--batch-size",
         type=int,
         default=4,
-        help="Batch size for inference",
+        help="Batch size for native inference (ignored for vllm)",
     )
     parser.add_argument(
         "--max-new-tokens",
@@ -375,15 +426,21 @@ def main():
         print(f"  EVALUATING: {spec.name}")
         print(f"{'#'*60}")
 
-        # Load model
-        model, tokenizer = load_merged_model(spec, args.cache_dir)
+        # Merge model (cached if already done)
+        merged_path = merge_model(spec, args.cache_dir)
 
         # Generate summaries
-        generated = generate_summaries(
-            model, tokenizer, examples,
-            max_new_tokens=args.max_new_tokens,
-            batch_size=args.batch_size,
-        )
+        if args.engine == "vllm":
+            generated = generate_vllm(
+                merged_path, examples,
+                max_new_tokens=args.max_new_tokens,
+            )
+        else:
+            generated = generate_native(
+                merged_path, examples,
+                max_new_tokens=args.max_new_tokens,
+                batch_size=args.batch_size,
+            )
 
         # Compute metrics
         metrics, per_example = compute_all_metrics(references, generated)
@@ -400,10 +457,6 @@ def main():
                 f.write(json.dumps(record) + "\n")
 
         all_results[spec.name] = {"metrics": metrics}
-
-        # Free GPU memory before loading next model
-        del model
-        torch.cuda.empty_cache()
 
         print(f"\n  {spec.name} results:")
         for metric, vals in metrics.items():
